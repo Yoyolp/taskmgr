@@ -1,0 +1,20 @@
+[package]
+name = "taskmgr"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ratatui = "0.26"
+crossterm = "0.29.0"
+sysinfo = "0.31"
+
+[profile.release]
+opt-level = "z"        # 优化大小，z 是最小化，3 是性能优先
+lto = true            # 链接时优化
+codegen-units = 1     # 减少并行编译单元，提高优化效果
+strip = true          # 剥离符号信息（Rust 1.59+）
+panic = "abort"       # 使用 abort 而非 unwind，减小体积
+
+[target.'cfg(windows)'.linker]
+# 使用静态链接 CRT
+rustflags = ["-C", "target-feature=+crt-static"]
