@@ -124,9 +124,9 @@ impl SystemInfo {
 
     }
 
-    pub fn processes(&self) -> Vec<&sysinfo::Process> {
-        self.sys.processes().values().collect()
-    }
+    // pub fn processes(&self) -> Vec<&sysinfo::Process> {
+    //     self.sys.processes().values().collect()
+    // }
 
     // 总进程数 (包括所有状态的进程)  
     // pub fn total_process_count(&self) -> usize {
@@ -158,30 +158,30 @@ pub struct ProcessInfo {
 }
 
 impl ProcessInfo {
-    pub fn new(sys: &SystemInfo, n: usize) -> Self {
-        let procs = sys.processes();
+    // pub fn new(sys: &SystemInfo, n: usize) -> Self {
+    //     let procs = sys.processes();
         
-        let mut list :Vec<ProcessInfoItem> = Vec::new();
-        for (_, proc) in procs.iter()
-                .take(n.try_into().unwrap())
-                .enumerate() {
+    //     let mut list :Vec<ProcessInfoItem> = Vec::new();
+    //     for (_, proc) in procs.iter()
+    //             .take(n.try_into().unwrap())
+    //             .enumerate() {
             
-            let name = proc.name().to_string_lossy();
-            let name = if name.len() > 35 { &name[..35] } else { &name };
-            let pid = proc.pid().as_u32();
-            let cpu  = proc.cpu_usage();
-            let mem = proc.memory() as f64 / 1024.0 / 1024.0;
+    //         let name = proc.name().to_string_lossy();
+    //         let name = if name.len() > 35 { &name[..35] } else { &name };
+    //         let pid = proc.pid().as_u32();
+    //         let cpu  = proc.cpu_usage();
+    //         let mem = proc.memory() as f64 / 1024.0 / 1024.0;
 
-            list.push(ProcessInfoItem { 
-                name: String::from(name), 
-                pid, 
-                cpu, 
-                mem: mem,
-                status: proc.status()
-            });
-        }  
-        Self { procs: list }
-    }
+    //         list.push(ProcessInfoItem { 
+    //             name: String::from(name), 
+    //             pid, 
+    //             cpu, 
+    //             mem: mem,
+    //             status: proc.status()
+    //         });
+    //     }  
+    //     Self { procs: list }
+    // }
 
     pub fn uninit() -> Self {
         Self {
@@ -245,12 +245,12 @@ impl NetworkInfo {
     }
 
     // 直接获取某个网卡的累计数据总量
-    pub fn get_total_transfer(interface_name: &str) -> Option<(u64, u64)> {
-        let networks = Networks::new_with_refreshed_list();
-        let (_, data) = networks.iter()
-            .find(|(name, _)| *name == interface_name)?;
-        Some((data.total_received(), data.total_transmitted()))
-    }
+    // pub fn get_total_transfer(interface_name: &str) -> Option<(u64, u64)> {
+    //     let networks = Networks::new_with_refreshed_list();
+    //     let (_, data) = networks.iter()
+    //         .find(|(name, _)| *name == interface_name)?;
+    //     Some((data.total_received(), data.total_transmitted()))
+    // }
 
 }
 
@@ -264,9 +264,3 @@ fn network_interface_name() -> Vec<String> {
     }
     res
 }
-
-
-
-
-
-

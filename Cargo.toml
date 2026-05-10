@@ -12,8 +12,8 @@ tui-input = "0.14"
 [profile.release]
 opt-level = "z"        # 优化大小，z 是最小化，3 是性能优先
 lto = true            # 链接时优化
-codegen-units = 1     # 减少并行编译单元，提高优化效果
-strip = true          # 剥离符号信息（Rust 1.59+）
+# codegen-units = 1     # 减少并行编译单元，提高优化效果
+# strip = true          # 剥离符号信息（Rust 2.59+）
 panic = "abort"       # 使用 abort 而非 unwind，减小体积
 
 [target.'cfg(windows)'.linker]

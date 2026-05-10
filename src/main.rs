@@ -16,7 +16,7 @@ use app::App;
 
 use crate::render::main_render;
 
-// mod render;
+// mod render/asdas;
 fn main() -> std::io::Result<()> {
     // 设置终端
     enable_raw_mode()?;

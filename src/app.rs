@@ -3,13 +3,16 @@ use crossterm::event::KeyCode;
 use ratatui::{
      widgets::{  ScrollbarState, TableState}
 };
+use tui_input::{Input};
+use tui_input::InputRequest;
+// use tui_input::backend::crossterm::InputEvent;
 
 use std::time::{
     Duration, Instant
 };
 
 use crate::tmgr::SystemInfo;
-
+// use tui_input::backend::crossterm::EventHandler;
 pub struct App {
     // pub processes: Vec<Row<'static>>,
     pub last_update: Instant,
@@ -22,8 +25,12 @@ pub struct App {
     // pub vertical_scroll: usize,              // 当前滚动条状态
     
     // 用户输入
-    // pub user_input: Input,
-    pub is_running: bool
+    pub user_input: Input,
+    messages: Vec<String>,
+    
+    // 运行状态
+    pub is_running: bool,
+    pub input_mode: bool
 }
 
 impl App {
@@ -38,10 +45,40 @@ impl App {
             scrollbar_state: ScrollbarState::new(0),
             // vertical_scroll: 0,
             
+            user_input: Input::default(),
+            messages: Vec::default(),
+
             // user_input: Input::default()
-            is_running: true
+            is_running: true,
+            input_mode: false
         }
     }
+    // 将 crossterm 的KeyCode 转化为 InputRqeuest处理
+    pub fn handle_key(&mut self, code: KeyCode) {
+        // 将 croessterm event -> tui-input
+        let request = match code {
+            KeyCode::Char(c) => InputRequest::InsertChar(c),
+            KeyCode::Backspace => InputRequest::DeletePrevChar,
+            // KeyCode::Delete => InputRequest::DeleteChar,
+            // KeyCode::Left => InputRequest::MoveCursorLeft,
+            // KeyCode::Right => InputRequest::MoveCursorRight,
+            // KeyCode::Home => InputRequest::MoveCursorToBeginning,
+            // KeyCode::End => InputRequest::MoveCursorToEnd,
+            // KeyCode::Enter => InputRequest::,
+            _ => return
+        };
+        self.user_input.handle(request);
+    }
+
+    // 提交当前输入的内容
+    pub fn submit(&mut self) {
+        let content = self.user_input.value();
+        if !content.is_empty() {
+            self.messages.push(std::format!("You {}", content));
+        }
+
+    }
+
     
     pub fn update_if_needed(&mut self, sysinfo: &mut SystemInfo) {
         let now = Instant::now();
@@ -89,6 +126,16 @@ impl App {
     }
 
     pub fn solve_keycode(&mut self, key_code: KeyCode, sysinfo: &mut SystemInfo) {
+        if self.input_mode {
+            if key_code == KeyCode::Esc {
+                self.input_mode = if self.input_mode { false } else { true };
+                return;
+            }
+
+            self.handle_key(key_code);
+            return;
+        }
+
         match key_code {
             KeyCode::Char('q') => self.is_running = false,
 
@@ -99,6 +146,9 @@ impl App {
                 let pid = sysinfo.selected_pid;
                 let _ = sysinfo.stop_proc_by_pid(pid);
             },
+            
+            KeyCode::Char('/') => self.input_mode = true,
+            // KeyCode::Esc => self.input_mode = if self.input_mode { false } else { true },
 
             _ => {}
         }

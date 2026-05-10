@@ -1,5 +1,5 @@
 use std::{rc::Rc, };
-// use std::os::windows::process;
+
 use ratatui::{
     Frame, 
     layout::Rect, 
@@ -8,10 +8,8 @@ use ratatui::{
     widgets::{Axis, Cell, Chart, Dataset, GraphType, Paragraph, Row, ScrollbarOrientation,  Table, }
 };
 use ratatui::{
-    // backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
-    // text::{Line, Span},
     widgets::{Block, Borders, Scrollbar},
 };
 
@@ -37,9 +35,10 @@ pub fn main_render(frame: &mut Frame, app: &mut App, mut sysinfo: &mut SystemInf
     // panel_area_render(&mut chunks, frame, sysinfo);
     // 打印仪表盘
     panel_area_render(&mut chunks, frame, sysinfo);
-                    
     // PROCESS  
     proc_list_render(&mut chunks, frame, app, sysinfo);
+
+    user_input_render(&mut chunks, frame, app, sysinfo);
 }
 
 // 打印仪表盘部分
@@ -216,32 +215,46 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
         horizontal_chunks[1],
         &mut app.scrollbar_state,
     );
-    // frame.render_stateful_widget(table, chunks[1], &mut app.table_state);
+    
     // 状态栏
     if let Some(selected_index) = app.table_state.selected() {
         let target_proc = &sysinfo.proc_info.procs[selected_index];
         sysinfo.selected_pid = target_proc.pid;
     }
+
+    // 获取光标位置
+
     
-    let status = Paragraph::new(
+/*     let status = Paragraph::new(
         std::format!(
-            "Press 'q' to quit | ↑/↓,j/k to navigate | 'd' delete proc | choose -> {:}",
-            &sysinfo.selected_pid
+            "Press 'q' to quit | ↑/↓,j/k to navigate | 'd' delete proc | choose -> {:} input: {}",
+            &sysinfo.selected_pid,
+            app.user_input.value()
         ))
         .block(Block::default().borders(Borders::TOP));
-    frame.render_widget(status, chunks[2]);   
+    
+    frame.render_widget(status, chunks[2]);  */
+
 }
 
-
-// fn user_input_render(r: &mut Render, frame: &mut Frame, app: &mut App, sysinfo: &mut SystemInfo) {
-
-// }
-
-
-
-
-
-
+fn user_input_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, sysinfo: &mut SystemInfo) {
+    let mut status = Paragraph::new(
+        std::format!(
+            "Press 'q' to quit | ↑/↓,j/k to navigate | 'd' delete proc | choose -> {:}",
+            &sysinfo.selected_pid,
+        ))
+        .block(Block::default().borders(Borders::TOP));
+    
+    if app.input_mode {
+        status = Paragraph::new(std::format!(
+            "INPUT > {}",
+            app.user_input.value()
+        ))
+        .block(Block::default().borders(Borders::TOP));
+    }
+    
+    frame.render_widget(status, chunks[2]); 
+}
 
 
 
