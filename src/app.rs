@@ -1,7 +1,7 @@
 use crossterm::event::KeyCode;
 // use std::os::windows::process;
 use ratatui::{
-     widgets::{ Row,  ScrollbarState, TableState}
+     widgets::{  ScrollbarState, TableState}
 };
 
 use std::time::{
@@ -11,7 +11,7 @@ use std::time::{
 use crate::tmgr::SystemInfo;
 
 pub struct App {
-    pub processes: Vec<Row<'static>>,
+    // pub processes: Vec<Row<'static>>,
     pub last_update: Instant,
     pub update_interval: Duration,
     
@@ -19,7 +19,7 @@ pub struct App {
     
     // 滑条是实现
     pub scrollbar_state: ScrollbarState,     // 滚动条状态
-    pub vertical_scroll: usize,              // 当前滚动条状态
+    // pub vertical_scroll: usize,              // 当前滚动条状态
     
     // 用户输入
     // pub user_input: Input,
@@ -29,14 +29,14 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         Self {
-            processes: Vec::new(),
+            // processes: Vec::new(),
             last_update: Instant::now(),
             update_interval: Duration::from_millis(500),   // 500 ms
             
             table_state: TableState::default(),
             
             scrollbar_state: ScrollbarState::new(0),
-            vertical_scroll: 0,
+            // vertical_scroll: 0,
             
             // user_input: Input::default()
             is_running: true
@@ -50,26 +50,41 @@ impl App {
             // 更新信息
             sysinfo.refresh();
             // 跟新滚动条总长度
-            self.scrollbar_state = self.scrollbar_state.content_length(self.processes.len());
+            let total_rows = sysinfo.proc_info.procs.len();
+            self.scrollbar_state = self.scrollbar_state.content_length(total_rows);
+            // self.scrollbar_state = self.scrollbar_state.content_length(self.processes.len());
+            
+            if let Some(selected) = self.table_state.selected() {
+                if selected >= total_rows && total_rows > 0 {
+                    self.table_state.select(Some(total_rows - 1));
+                }
+                
+            }
+            
             self.last_update = now;
-
         }
     }
     
     // 滚动处理
-    fn scroll_up(&mut self) {
-        if self.vertical_scroll > 0 {
-            self.vertical_scroll -= 1;
-            self.table_state.select(Some(self.vertical_scroll as usize));
-            self.scrollbar_state = self.scrollbar_state.position(self.vertical_scroll);
+    fn scroll_up(&mut self, sysinfo: &SystemInfo) {
+        let total_rows = sysinfo.proc_info.procs.len();
+        if let Some(selected) = self.table_state.selected() {
+            if selected > 0 {
+                self.table_state.select(Some(selected - 1));
+            }
+        } else if total_rows > 0 {
+            self.table_state.select(Some(0));
         }
     }
 
-    fn scroll_down(&mut self) {
-        if (self.vertical_scroll as usize) < self.processes.len().saturating_sub(1) {
-            self.vertical_scroll += 1;
-            self.table_state.select(Some(self.vertical_scroll as usize));
-            self.scrollbar_state = self.scrollbar_state.position(self.vertical_scroll);
+    fn scroll_down(&mut self, sysinfo: &SystemInfo) {
+        let total_rows = sysinfo.proc_info.procs.len();
+        if let Some(selected) = self.table_state.selected() {
+            if selected + 1 < total_rows {
+                self.table_state.select(Some(selected + 1));
+            }
+        } else if total_rows > 0 {
+            self.table_state.select(Some(0));
         }
     }
 
@@ -77,11 +92,8 @@ impl App {
         match key_code {
             KeyCode::Char('q') => self.is_running = false,
 
-            KeyCode::Up => self.scroll_up(),
-            KeyCode::Char('k') => self.scroll_up(),
-
-            KeyCode::Down => self.scroll_down(),
-            KeyCode::Char('j') => self.scroll_down(),
+            KeyCode::Char('k') | KeyCode::Up  => self.scroll_up(sysinfo),
+            KeyCode::Char('j') | KeyCode::Down => self.scroll_down(sysinfo),
 
             KeyCode::Char('d') => {
                 let pid = sysinfo.selected_pid;

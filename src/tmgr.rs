@@ -129,9 +129,9 @@ impl SystemInfo {
     }
 
     // 总进程数 (包括所有状态的进程)  
-    pub fn total_process_count(&self) -> usize {
-        self.sys.processes().len()
-    }
+    // pub fn total_process_count(&self) -> usize {
+    //     self.sys.processes().len()
+    // }
    
     // 通过 PID 终止进程
     pub fn stop_proc_by_pid(&mut self, pid: u32) -> Result<bool, String> {
@@ -189,18 +189,18 @@ impl ProcessInfo {
         }
     }
     
-    pub fn find_by_pid(&self, pid: u32) -> Option<&ProcessInfoItem> {
-        // for item in &self.procs {
-        //     if item.pid == pid {
-        //         return Some(item);
-        //     }
-        // }
-        // None
+    // pub fn find_by_pid(&self, pid: u32) -> Option<&ProcessInfoItem> {
+    //     // for item in &self.procs {
+    //     //     if item.pid == pid {
+    //     //         return Some(item);
+    //     //     }
+    //     // }
+    //     // None
 
-        self.procs.iter().find(|item | {
-            item.pid == pid
-        } )
-    }
+    //     self.procs.iter().find(|item | {
+    //         item.pid == pid
+    //     } )
+    // }
 }
 
 // 流量获取统计

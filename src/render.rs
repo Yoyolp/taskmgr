@@ -31,7 +31,7 @@ pub fn main_render(frame: &mut Frame, app: &mut App, mut sysinfo: &mut SystemInf
             Constraint::Length(3),   // 状态栏
             Constraint::Length(3),   // 用户输入框
         ])
-        .split(frame.size());
+        .split(frame.area());
     
     app.update_if_needed(&mut sysinfo);
     // panel_area_render(&mut chunks, frame, sysinfo);
@@ -174,6 +174,9 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
                 
             })
             .collect::<Vec<Row>>();
+    
+    let total_rows = proc_table.len();
+
     // 渲染表格 
     // let table = Table::new(app.processes.clone(), widths)
     let table = Table::new(proc_table, widths)
@@ -181,7 +184,7 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
         .block(Block::bordered()
             .title(std::format!("Process - >> [{:}]", &sysinfo.selected_pid))
         )
-        .highlight_style(Style::default()
+        .row_highlight_style(Style::default()
             .bg(Color::Yellow)
             .fg(Color::Black)
             .bold()
@@ -190,10 +193,21 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
         
     frame.render_stateful_widget(table, horizontal_chunks[0], &mut app.table_state);
     // 创建滚动条状态
-        
+    
+    if let Some(selected) = app.table_state.selected() {
+        app.scrollbar_state = app.scrollbar_state
+            .content_length(total_rows)
+            .position(selected);
+    } else if total_rows > 0 {
+        app.table_state.select(Some(0));
+        app.scrollbar_state = app.scrollbar_state
+            .content_length(total_rows)
+            .position(0);
+    }
+
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-        .begin_symbol(Some("↑"))
-        .end_symbol(Some("↓"))
+        .begin_symbol(Some("+"))
+        .end_symbol(Some("+"))
         .thumb_symbol("█")
         .track_symbol(Some("│"));
     // 渲染滚动条（使用 inner 可以留出边距）
@@ -204,11 +218,7 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
     );
     // frame.render_stateful_widget(table, chunks[1], &mut app.table_state);
     // 状态栏
-    // let mut selected_pid: u32 = 0;
     if let Some(selected_index) = app.table_state.selected() {
-        // let process_count = SystemInfo::total_process_count(&sysinfo);
-        // let procinfo = ProcessInfo::new(&sysinfo, process_count);
-        // let target_proc = &procinfo.procs[selected_index];
         let target_proc = &sysinfo.proc_info.procs[selected_index];
         sysinfo.selected_pid = target_proc.pid;
     }
