@@ -1,8 +1,11 @@
-use std::rc::Rc;
-
+use std::{rc::Rc, };
 // use std::os::windows::process;
 use ratatui::{
-    Frame, layout::Rect, style::Stylize, symbols::Marker, widgets::{Axis, Cell, Chart, Dataset, GraphType, Paragraph, Row, ScrollbarOrientation,  Table, }
+    Frame, 
+    layout::Rect, 
+    style::Stylize, 
+    symbols::Marker, 
+    widgets::{Axis, Cell, Chart, Dataset, GraphType, Paragraph, Row, ScrollbarOrientation,  Table, }
 };
 use ratatui::{
     // backend::CrosstermBackend,
@@ -17,119 +20,30 @@ use crate::tmgr::{SystemInfo};
 
 use crate::app::App;
 
-// 这个结构主要 处理渲染相关的问题
-pub struct Render {
-    pub chunks: Rc<[Rect]>,            // 界面分配
-}
-
-impl Render {
-    pub fn new(frame: &mut Frame) -> Self {
-        Self {
-            chunks: Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    // Constraint::Length(3),   // 标题栏
-                    Constraint::Length(8),   // CPU 仪表
-                    Constraint::Min(0),      // 内容区域
-                    Constraint::Length(3),   // 状态栏
-                ])
-                .split(frame.size()),
-        }
-    }  
-
-    pub fn main_render(mut self, frame: &mut Frame, app: &mut App, mut sysinfo: &mut SystemInfo) {
-        
-        // 刷新信息
-        app.update_if_needed(&mut sysinfo);
-        
-        // 打印仪表盘
-        panel_area_render(&mut self, frame, sysinfo);
-                    
-        // PROCESS  =====================================
-        // 进程列表
-            
-        // 定义列宽
-        let widths = [
-            Constraint::Length(8),   // PID
-            Constraint::Length(35),  // Name
-            Constraint::Length(8),   // CPU
-            Constraint::Length(8),   // MEM
-            Constraint::Min(10),     // Status
-        ];
-        // 创建表头
-        let header = Row::new(vec![
-            Cell::new("PID"),
-            Cell::new("Name"),
-            Cell::new("CPU%"),
-            Cell::new("MEM(MB)"),
-            Cell::new("status"),
+// 处理渲染相关的问题
+pub fn main_render(frame: &mut Frame, app: &mut App, mut sysinfo: &mut SystemInfo) {
+    let mut chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            // Constraint::Length(3),   // 标题栏
+            Constraint::Length(8),   // CPU 仪表
+            Constraint::Min(0),      // 内容区域
+            Constraint::Length(3),   // 状态栏
+            Constraint::Length(3),   // 用户输入框
         ])
-        .bottom_margin(1);
-        
-        let table_area = self.chunks[1];
-        //  方法1：滚动条放在表格右边（需要水平布局
-        let horizontal_chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Min(0),   // 表格
-                Constraint::Length(1), // 滚动条
-            ])
-            .split(table_area);
-
-        // 渲染表格 
-        let table = Table::new(app.processes.clone(), widths)
-            .header(header)
-            .block(Block::bordered().title("Process"))
-            .highlight_style(Style::default()
-                .bg(Color::Yellow)
-                .fg(Color::Black)
-                .bold()
-            )
-            .highlight_symbol(">> ");
-            
-            // .scroll((app.vertical_scroll, 0));
-            
-        frame.render_stateful_widget(table, horizontal_chunks[0], &mut app.table_state);
-        // 创建滚动条状态
-            
-        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(Some("↑"))
-            .end_symbol(Some("↓"))
-            .thumb_symbol("█")
-            .track_symbol(Some("│"));
-
-        // 渲染滚动条（使用 inner 可以留出边距）
-        frame.render_stateful_widget(
-            scrollbar,
-            horizontal_chunks[1],
-            &mut app.scrollbar_state,
-        );
-        // frame.render_stateful_widget(table, chunks[1], &mut app.table_state);
-
-        // 状态栏
-        // let mut selected_pid: u32 = 0;
-        if let Some(selected_index) = app.table_state.selected() {
-            // let process_count = SystemInfo::total_process_count(&sysinfo);
-            // let procinfo = ProcessInfo::new(&sysinfo, process_count);
-            // let target_proc = &procinfo.procs[selected_index];
-            let target_proc = &sysinfo.proc_info.procs[selected_index];
-            sysinfo.selected_pid = target_proc.pid;
-        }
-        
-        let status = Paragraph::new(
-            std::format!(
-                "Press 'q' to quit | ↑/↓,j/k to navigate | 'd' delete proc | choose -> {:}",
-                &sysinfo.selected_pid
-            ))
-            .block(Block::default().borders(Borders::TOP));
-
-        frame.render_widget(status, self.chunks[2]);
-
-    }
+        .split(frame.size());
+    
+    app.update_if_needed(&mut sysinfo);
+    // panel_area_render(&mut chunks, frame, sysinfo);
+    // 打印仪表盘
+    panel_area_render(&mut chunks, frame, sysinfo);
+                    
+    // PROCESS  
+    proc_list_render(&mut chunks, frame, app, sysinfo);
 }
 
 // 打印仪表盘部分
-fn panel_area_render(r: &mut Render, frame: &mut Frame, sysinfo: &mut SystemInfo) {
+fn panel_area_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, sysinfo: &mut SystemInfo) {
     // 标题  
     // 数据点：x 和 y 都是 0.0 到 1.0 之间的值
     let cpu_points = sysinfo.cpu_usage_points.clone()
@@ -178,7 +92,7 @@ fn panel_area_render(r: &mut Render, frame: &mut Frame, sysinfo: &mut SystemInfo
         .x_axis(Axis::default().bounds([0.0, 1.0]))
         .y_axis(Axis::default().bounds([0.0, 1.0]));
         
-    let panel_area = r.chunks[0];
+    let panel_area = chunks[0];
     let horizontal_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
@@ -212,4 +126,113 @@ fn panel_area_render(r: &mut Render, frame: &mut Frame, sysinfo: &mut SystemInfo
     
     frame.render_widget(wifi_status, wifi_chunks[0]);
 }
+
+// 进程列表
+fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, sysinfo: &mut SystemInfo) {
+    // PROCESS  =====================================
+    // 进程列表
+        
+    // 定义列宽
+    let widths = [
+        Constraint::Length(8),   // PID
+        Constraint::Length(35),  // Name
+        Constraint::Length(8),   // CPU
+        Constraint::Length(8),   // MEM
+        Constraint::Min(10),     // Status
+    ];
+    // 创建表头
+    let header = Row::new(vec![
+        Cell::new("PID"),
+        Cell::new("Name"),
+        Cell::new("CPU%"),
+        Cell::new("MEM(MB)"),
+        Cell::new("status"),
+    ])
+    .bottom_margin(1);
+    
+    let table_area = chunks[1];
+    //  方法1：滚动条放在表格右边（需要水平布局
+    let horizontal_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Min(0),   // 表格
+            Constraint::Length(1), // 滚动条
+        ])
+        .split(table_area);
+    
+    // 创建表格
+    let proc_table = sysinfo.proc_info.procs
+            .iter()
+            .map(|item| {
+                Row::new(vec![
+                    Cell::new(std::format!("{}", item.pid)),
+                    Cell::new(item.name.clone()),
+                    Cell::new(std::format!("{:.1}", item.cpu)),
+                    Cell::new(std::format!("{:.1}", item.mem)),
+                    Cell::new(std::format!("{}", item.status)),
+                ])
+                
+            })
+            .collect::<Vec<Row>>();
+    // 渲染表格 
+    // let table = Table::new(app.processes.clone(), widths)
+    let table = Table::new(proc_table, widths)
+        .header(header)
+        .block(Block::bordered()
+            .title(std::format!("Process - >> [{:}]", &sysinfo.selected_pid))
+        )
+        .highlight_style(Style::default()
+            .bg(Color::Yellow)
+            .fg(Color::Black)
+            .bold()
+        )
+        .highlight_symbol(">> ");
+        
+    frame.render_stateful_widget(table, horizontal_chunks[0], &mut app.table_state);
+    // 创建滚动条状态
+        
+    let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+        .begin_symbol(Some("↑"))
+        .end_symbol(Some("↓"))
+        .thumb_symbol("█")
+        .track_symbol(Some("│"));
+    // 渲染滚动条（使用 inner 可以留出边距）
+    frame.render_stateful_widget(
+        scrollbar,
+        horizontal_chunks[1],
+        &mut app.scrollbar_state,
+    );
+    // frame.render_stateful_widget(table, chunks[1], &mut app.table_state);
+    // 状态栏
+    // let mut selected_pid: u32 = 0;
+    if let Some(selected_index) = app.table_state.selected() {
+        // let process_count = SystemInfo::total_process_count(&sysinfo);
+        // let procinfo = ProcessInfo::new(&sysinfo, process_count);
+        // let target_proc = &procinfo.procs[selected_index];
+        let target_proc = &sysinfo.proc_info.procs[selected_index];
+        sysinfo.selected_pid = target_proc.pid;
+    }
+    
+    let status = Paragraph::new(
+        std::format!(
+            "Press 'q' to quit | ↑/↓,j/k to navigate | 'd' delete proc | choose -> {:}",
+            &sysinfo.selected_pid
+        ))
+        .block(Block::default().borders(Borders::TOP));
+    frame.render_widget(status, chunks[2]);   
+}
+
+
+// fn user_input_render(r: &mut Render, frame: &mut Frame, app: &mut App, sysinfo: &mut SystemInfo) {
+
+// }
+
+
+
+
+
+
+
+
+
 

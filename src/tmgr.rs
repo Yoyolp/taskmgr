@@ -124,17 +124,6 @@ impl SystemInfo {
 
     }
 
-    // 获取进程 按CPU 使用率排序
-    // pub fn processes_sorted_by_cpu(&self) -> Vec<&sysinfo::Process> {
-    //     let mut procs: Vec<_> = self.sys.processes().values().collect();
-    //     procs.sort_by(|a, b | {
-    //         b.cpu_usage()
-    //             .partial_cmp(&a.cpu_usage())
-    //             .unwrap_or(std::cmp::Ordering::Equal)
-    //     });
-    //     procs
-    // }
-
     pub fn processes(&self) -> Vec<&sysinfo::Process> {
         self.sys.processes().values().collect()
     }
@@ -143,15 +132,7 @@ impl SystemInfo {
     pub fn total_process_count(&self) -> usize {
         self.sys.processes().len()
     }
-
-    // 按照状态统计进程数
-    // pub fn process_count_by_status(&self, status: ProcessStatus) -> usize {
-    //     self.sys.processes()
-    //         .values()
-    //         .filter(|p| p.status() == status)
-    //         .count()
-    // }
-    
+   
     // 通过 PID 终止进程
     pub fn stop_proc_by_pid(&mut self, pid: u32) -> Result<bool, String> {
         let pid = Pid::from_u32(pid);
@@ -283,6 +264,9 @@ fn network_interface_name() -> Vec<String> {
     }
     res
 }
+
+
+
 
 
 
