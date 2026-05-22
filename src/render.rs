@@ -16,7 +16,7 @@ use ratatui::{
 // pub mod tmgr;
 use crate::tmgr::{SystemInfo};
 
-use crate::app::App;
+use crate::app::{App, InputMode};
 
 // 处理渲染相关的问题
 pub fn main_render(frame: &mut Frame, app: &mut App, mut sysinfo: &mut SystemInfo) {
@@ -245,13 +245,36 @@ fn user_input_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, 
         ))
         .block(Block::default().borders(Borders::TOP));
     
-    if app.input_mode {
-        status = Paragraph::new(std::format!(
-            "INPUT > {}",
-            app.user_input.value()
-        ))
-        .block(Block::default().borders(Borders::TOP));
+    let cursor_char = if (app.time_cyclic >> 2) & 1 == 0  {  '|' } else { ' ' };
+
+    match app.input_mode {
+        InputMode::Find => {
+            status = Paragraph::new(std::format!(
+                "input > {}{}",
+                app.user_input.value(),
+                cursor_char
+            ))
+            .block(Block::default().borders(Borders::TOP));
+        }
+
+        InputMode::Command => {
+            status = Paragraph::new(std::format!(
+                "command : {}{}",
+                app.user_input.value(),
+                cursor_char
+            ))
+            .block(Block::default().borders(Borders::TOP));
+        }
+        _ => {}
     }
+    
+    // if app.input_mode {
+        // status = Paragraph::new(std::format!(
+            // "INPUT > {}▮",
+            // app.user_input.value()
+        // ))
+        // .block(Block::default().borders(Borders::TOP));
+    // }
     
     frame.render_widget(status, chunks[2]); 
 }

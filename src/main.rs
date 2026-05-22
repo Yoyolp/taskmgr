@@ -1,4 +1,4 @@
-// use std::os::windows::process;
+// use std::os::win/dows::process;
 use crossterm::{
     event::{self, Event}, execute, terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode}
 };
@@ -29,11 +29,9 @@ fn main() -> std::io::Result<()> {
     let mut app = App::new();
     let mut sysinfo = SystemInfo::new();
 
-    // let mut render = Render::new(frame)
     
     // 主循环
     loop {
-        // terminal.draw(|frame| main_render(frame, &mut app, &mut sysinfo))?;
         if !app.is_running {
             break;
         }
@@ -49,11 +47,10 @@ fn main() -> std::io::Result<()> {
                 if key.kind == event::KeyEventKind::Release {
                     continue;
                 }
-                app.solve_keycode(key.code, &mut sysinfo);
+                app.solve_keycode(key, &mut sysinfo);
             }
         }
     }
-    
     // 清理
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;

@@ -1,4 +1,4 @@
-use crossterm::event::KeyCode;
+use crossterm::event::{KeyCode, KeyEvent};
 // use std::os::windows::process;
 use ratatui::{
      widgets::{  ScrollbarState, TableState}
@@ -13,6 +13,15 @@ use std::time::{
 
 use crate::tmgr::SystemInfo;
 // use tui_input::backend::crossterm::EventHandler;
+
+#[derive(PartialEq)]
+pub enum InputMode {
+    False,
+    Find,
+    Command
+}
+
+
 pub struct App {
     // pub processes: Vec<Row<'static>>,
     pub last_update: Instant,
@@ -30,7 +39,9 @@ pub struct App {
     
     // 运行状态
     pub is_running: bool,
-    pub input_mode: bool
+    pub input_mode: InputMode,
+
+    pub time_cyclic: u64                   // 时间循环
 }
 
 impl App {
@@ -50,34 +61,30 @@ impl App {
 
             // user_input: Input::default()
             is_running: true,
-            input_mode: false
+            input_mode: InputMode::False,
+
+            time_cyclic: 0
         }
     }
     // 将 crossterm 的KeyCode 转化为 InputRqeuest处理
-    pub fn handle_key(&mut self, code: KeyCode) {
+    fn handle_key(&mut self, code: KeyCode) {
         // 将 croessterm event -> tui-input
         let request = match code {
             KeyCode::Char(c) => InputRequest::InsertChar(c),
             KeyCode::Backspace => InputRequest::DeletePrevChar,
-            // KeyCode::Delete => InputRequest::DeleteChar,
-            // KeyCode::Left => InputRequest::MoveCursorLeft,
-            // KeyCode::Right => InputRequest::MoveCursorRight,
-            // KeyCode::Home => InputRequest::MoveCursorToBeginning,
-            // KeyCode::End => InputRequest::MoveCursorToEnd,
-            // KeyCode::Enter => InputRequest::,
             _ => return
         };
         self.user_input.handle(request);
     }
 
     // 提交当前输入的内容
-    pub fn submit(&mut self) {
-        let content = self.user_input.value();
-        if !content.is_empty() {
-            self.messages.push(std::format!("You {}", content));
-        }
+    // pub fn submit(&mut self) {
+    //     let content = self.user_input.value();
+    //     if !content.is_empty() {
+    //         self.messages.push(std::format!("You {}", content));
+    //     }
 
-    }
+    // }
 
     
     pub fn update_if_needed(&mut self, sysinfo: &mut SystemInfo) {
@@ -98,6 +105,8 @@ impl App {
                 
             }
             
+            self.time_cyclic = (self.time_cyclic + 1) & 0xffffffff;
+
             self.last_update = now;
         }
     }
@@ -125,16 +134,20 @@ impl App {
         }
     }
 
-    pub fn solve_keycode(&mut self, key_code: KeyCode, sysinfo: &mut SystemInfo) {
-        if self.input_mode {
-            if key_code == KeyCode::Esc {
-                self.input_mode = if self.input_mode { false } else { true };
-                return;
-            }
+    pub fn solve_keycode(&mut self, key_event: KeyEvent, sysinfo: &mut SystemInfo) {
+        // step 1 处理键盘输入模式
+        // step 2 分发模式
 
-            self.handle_key(key_code);
-            return;
+        match self.input_mode {
+            InputMode::False => self.solve_keycode_false_mode(key_event, sysinfo),
+            InputMode::Find => self.solve_keycode_find_mode(key_event),
+            InputMode::Command => self.solve_keycode_command_mode(key_event)
         }
+        
+    }
+
+    fn solve_keycode_false_mode(&mut self, key_event: KeyEvent, sysinfo: &mut SystemInfo) {
+        let key_code = key_event.code;
 
         match key_code {
             KeyCode::Char('q') => self.is_running = false,
@@ -147,13 +160,52 @@ impl App {
                 let _ = sysinfo.stop_proc_by_pid(pid);
             },
             
-            KeyCode::Char('/') => self.input_mode = true,
-            // KeyCode::Esc => self.input_mode = if self.input_mode { false } else { true },
+            KeyCode::Char('/') => {
+                self.input_mode = InputMode::Find;
+                return;
+            }
 
+            KeyCode::Char(':') => {
+                self.input_mode = InputMode::Command;
+                return ;
+
+            }
             _ => {}
         }
     }
+
+    fn solve_keycode_find_mode(&mut self, key_event: KeyEvent) {
+        let key_code = key_event.code;
+
+        if self.input_mode != InputMode::Find {
+            return ;
+        }
+
+        match key_code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::False;
+                self.user_input = Input::default();
+                return;
+            }
+            _ => self.handle_key(key_code)
+        }
+    }
+
+    fn solve_keycode_command_mode(&mut self, key_event: KeyEvent) {
+        let key_code = key_event.code;
+
+        if self.input_mode != InputMode::Command {
+            return ;
+        }
+
+        match key_code {
+            KeyCode::Esc => {
+                self.input_mode = InputMode::False;
+                self.user_input = Input::default();
+                return;
+            }
+            _ => self.handle_key(key_code)
+        }
+
+    }
 }
-
-
-
