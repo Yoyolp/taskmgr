@@ -29,7 +29,6 @@ fn main() -> std::io::Result<()> {
     let mut app = App::new();
     let mut sysinfo = SystemInfo::new();
 
-    
     // 主循环
     loop {
         if !app.is_running {

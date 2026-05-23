@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::{event::{KeyCode, KeyEvent}};
 // use std::os::windows::process;
 use ratatui::{
      widgets::{  ScrollbarState, TableState}
@@ -13,6 +13,11 @@ use std::time::{
 
 use crate::tmgr::SystemInfo;
 // use tui_input::backend::crossterm::EventHandler;
+
+use std::collections::{ HashMap, VecDeque };
+
+
+
 
 #[derive(PartialEq)]
 pub enum InputMode {
@@ -41,7 +46,10 @@ pub struct App {
     pub is_running: bool,
     pub input_mode: InputMode,
 
-    pub time_cyclic: u64                   // 时间循环
+    pub time_cyclic: u64,                   // 时间循环
+
+    // Command Paser
+    // command_paser: CommandPaser
 }
 
 impl App {
@@ -63,7 +71,9 @@ impl App {
             is_running: true,
             input_mode: InputMode::False,
 
-            time_cyclic: 0
+            time_cyclic: 0,
+
+            // command_paser: CommandPaser::default() 
         }
     }
     // 将 crossterm 的KeyCode 转化为 InputRqeuest处理
@@ -85,7 +95,6 @@ impl App {
     //     }
 
     // }
-
     
     pub fn update_if_needed(&mut self, sysinfo: &mut SystemInfo) {
         let now = Instant::now();
@@ -106,7 +115,6 @@ impl App {
             }
             
             self.time_cyclic = (self.time_cyclic + 1) & 0xffffffff;
-
             self.last_update = now;
         }
     }
@@ -141,7 +149,7 @@ impl App {
         match self.input_mode {
             InputMode::False => self.solve_keycode_false_mode(key_event, sysinfo),
             InputMode::Find => self.solve_keycode_find_mode(key_event),
-            InputMode::Command => self.solve_keycode_command_mode(key_event)
+            InputMode::Command => self.solve_keycode_command_mode(key_event),
         }
         
     }
@@ -187,6 +195,16 @@ impl App {
                 self.user_input = Input::default();
                 return;
             }
+
+            KeyCode::Enter => {
+                // 定位到寻找的进程名字
+                
+
+                self.user_input = Input::default();
+                self.input_mode = InputMode::False;     
+                return ;
+            }
+
             _ => self.handle_key(key_code)
         }
     }
@@ -204,8 +222,82 @@ impl App {
                 self.user_input = Input::default();
                 return;
             }
+
+            KeyCode::Enter => {
+
+                self.messages.push(self.user_input
+                    .value()
+                    .to_string());
+
+                let mut paser= 
+                    CommandPaser::new(&self.messages
+                        .last().unwrap().clone());
+                
+                paser.explain(self);
+                
+                // self.command_paser.explain();
+                self.user_input = Input::default();
+                self.input_mode = InputMode::False;
+                return ;
+
+            }
+
             _ => self.handle_key(key_code)
         }
 
     }
+
+}
+
+// 存在一个
+
+pub struct CommandItem {
+    command_item: String,
+}
+
+pub struct ValItem {
+    val_type: String,
+    val: String
+}
+
+pub struct CommandPaser {
+    command_str: String,         // 命令原串
+    val_table: HashMap<String, ValItem>,
+    queue: VecDeque<CommandItem>
+        
+}
+
+impl CommandPaser {
+    pub fn new(command: &String) -> Self {
+        let mut q = VecDeque::new();
+        for chunk in command.split_whitespace() {
+            q.push_back(CommandItem { command_item: String::from(chunk) });
+        }
+
+        Self {
+            command_str: command.clone(),
+            val_table: HashMap::new(),
+            queue: q,
+        }
+    }
+
+    // exit 退出
+    // 删除
+    // kill -n name
+    // kill -p pid
+    // kill -n name1 -p pid2
+    // shutdown -n name -p pid ...         
+    
+    pub fn explain(&mut self, app: &mut App) {
+        while !self.queue.is_empty() {
+            
+            if let Some(ptr) = self.queue.pop_front() {
+                if ptr.command_item == "exit" {
+                    app.is_running = false;
+                }
+            }
+
+        }
+    }
+
 }
