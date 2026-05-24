@@ -191,12 +191,13 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
         .highlight_symbol(">> ");
         
     frame.render_stateful_widget(table, horizontal_chunks[0], &mut app.table_state);
-    // 创建滚动条状态
     
+    // 创建滚动条状态
     if let Some(selected) = app.table_state.selected() {
         app.scrollbar_state = app.scrollbar_state
             .content_length(total_rows)
             .position(selected);
+    
     } else if total_rows > 0 {
         app.table_state.select(Some(0));
         app.scrollbar_state = app.scrollbar_state
@@ -278,7 +279,6 @@ fn user_input_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, 
     
     frame.render_widget(status, chunks[2]); 
 }
-
 
 
 

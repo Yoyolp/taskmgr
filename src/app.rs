@@ -5,18 +5,14 @@ use ratatui::{
 };
 use tui_input::{Input};
 use tui_input::InputRequest;
-// use tui_input::backend::crossterm::InputEvent;
 
 use std::time::{
     Duration, Instant
 };
 
 use crate::tmgr::SystemInfo;
-// use tui_input::backend::crossterm::EventHandler;
 
 use std::collections::{ HashMap, VecDeque };
-
-
 
 
 #[derive(PartialEq)]
@@ -46,10 +42,15 @@ pub struct App {
     pub is_running: bool,
     pub input_mode: InputMode,
 
-    pub time_cyclic: u64,                   // 时间循环
+    pub time_cyclic: u64,
 
     // Command Paser
-    // command_paser: CommandPaser
+    // comma
+    // find
+    
+    find_pattern: String,
+    find_results: Vec<usize>,
+    current_find_index: usize
 }
 
 impl App {
@@ -73,7 +74,11 @@ impl App {
 
             time_cyclic: 0,
 
-            // command_paser: CommandPaser::default() 
+            // find
+            find_pattern: String::default(),
+            find_results: Vec::default(),
+            current_find_index: 0,
+            
         }
     }
     // 将 crossterm 的KeyCode 转化为 InputRqeuest处理
@@ -87,15 +92,43 @@ impl App {
         self.user_input.handle(request);
     }
 
-    // 提交当前输入的内容
-    // pub fn submit(&mut self) {
-    //     let content = self.user_input.value();
-    //     if !content.is_empty() {
-    //         self.messages.push(std::format!("You {}", content));
-    //     }
+    // 执行查找
+    pub fn find_processes(&mut self, sysinfo: &SystemInfo, pattern: &str) {
+        if pattern.is_empty() {
+            self.find_results.clear();
+            return ;
+        }
 
-    // }
+        self.find_results = sysinfo.find_processes_by_name(pattern, true);
+        
+        // 自动跳转到第一个匹配项
+        if !self.find_results.is_empty() {
+            self.current_find_index = 0;
+            self.table_state.select(Some(self.find_results[0]));
+        }
+    }
+    // 跳转到下一个匹配项
     
+    pub fn next_find_result(&mut self) {
+        if self.find_results.is_empty() {
+            return ;
+        }
+
+        self.current_find_index = (self.current_find_index + 1) % self.find_results.len();
+        self.table_state.select(Some(self.find_results[self.current_find_index]));
+    }
+    
+
+    // 跳转到上一个匹配项
+    pub fn prev_find_result(&mut self) {
+        if self.find_results.is_empty() {
+            return ;
+        }
+        
+        self.current_find_index = (self.current_find_index + self.find_results.len() - 1) % self.find_results.len();
+        self.table_state.select(Some(self.find_results[self.current_find_index]));
+    }
+   
     pub fn update_if_needed(&mut self, sysinfo: &mut SystemInfo) {
         let now = Instant::now();
 
@@ -148,7 +181,7 @@ impl App {
 
         match self.input_mode {
             InputMode::False => self.solve_keycode_false_mode(key_event, sysinfo),
-            InputMode::Find => self.solve_keycode_find_mode(key_event),
+            InputMode::Find => self.solve_keycode_find_mode(key_event, sysinfo),
             InputMode::Command => self.solve_keycode_command_mode(key_event),
         }
         
@@ -182,7 +215,7 @@ impl App {
         }
     }
 
-    fn solve_keycode_find_mode(&mut self, key_event: KeyEvent) {
+    fn solve_keycode_find_mode(&mut self, key_event: KeyEvent, sysinfo: &mut SystemInfo) {
         let key_code = key_event.code;
 
         if self.input_mode != InputMode::Find {
@@ -193,13 +226,15 @@ impl App {
             KeyCode::Esc => {
                 self.input_mode = InputMode::False;
                 self.user_input = Input::default();
+                self.find_results.clear();
                 return;
             }
 
             KeyCode::Enter => {
                 // 定位到寻找的进程名字
-                
+                let search_pattern = self.user_input.value().to_string();
 
+                self.find_processes(sysinfo, &search_pattern);
                 self.user_input = Input::default();
                 self.input_mode = InputMode::False;     
                 return ;
@@ -230,7 +265,7 @@ impl App {
                     .to_string());
 
                 let mut paser= 
-                    CommandPaser::new(&self.messages
+                    CommandParser::new(&self.messages
                         .last().unwrap().clone());
                 
                 paser.explain(self);
@@ -260,14 +295,14 @@ pub struct ValItem {
     val: String
 }
 
-pub struct CommandPaser {
+pub struct CommandParser {
     command_str: String,         // 命令原串
     val_table: HashMap<String, ValItem>,
     queue: VecDeque<CommandItem>
         
 }
 
-impl CommandPaser {
+impl CommandParser {
     pub fn new(command: &String) -> Self {
         let mut q = VecDeque::new();
         for chunk in command.split_whitespace() {

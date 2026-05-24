@@ -1,3 +1,5 @@
+use std::default;
+
 use sysinfo::{Pid, ProcessStatus, System, Networks};                   // 系统信息获取
 
 pub struct SystemInfo
@@ -141,8 +143,49 @@ impl SystemInfo {
             None => Err(format!("进程不存在 {}", pid)) 
         }
     }
-    
-    
+
+    // 根据 pid 查找 进程索引
+    pub fn find_processes_by_name(&self, pattern: &str, case_sensitive: bool) -> Vec<usize> {
+        let pattern = if case_sensitive {
+            pattern.to_string()
+        } else {
+            pattern.to_lowercase()
+        };
+
+        self.proc_info.procs
+            .iter()
+            .enumerate()
+            .filter(|(_, proc)| {
+                let proc_name = if case_sensitive {
+                    proc.name.clone()
+                } else {
+                    proc.name.to_lowercase()
+                }; 
+                proc_name.contains(&pattern)
+            })
+            .map(|(idx, _)| idx)
+            .collect()
+
+    }
+
+    // 根据 pid 查找进程索引
+    pub fn find_process_index_by_pid(&self, pid: u32) -> Option<usize> {
+        self.proc_info.procs
+            .iter()
+            .position(|proc| proc.pid == pid)
+    }
+
+    // 获取进程名字
+    pub fn get_process_name(&self, index: usize) -> Option<&str> {
+        self.proc_info.procs.get(index).map(|p| p.name.as_str())
+    }
+
+    // 检查是否存在匹配的进程
+    pub fn has_matching_processes(&self, pattern: &str) -> bool {
+        !self.find_processes_by_name(pattern, false).is_empty()
+    }
+
+
 }
 
 pub struct ProcessInfoItem {
@@ -214,11 +257,18 @@ pub struct NetworkInfo {
 
 impl NetworkInfo {
     pub fn new() -> Self {
+        let names = network_interface_name();
+        let default_name = if names.is_empty() {
+            String::from("unkown")
+        } else {
+            names[0].clone()
+        };
+
            
         Self { 
             prev_rx: 0, 
             prev_tx: 0,
-            network_name: network_interface_name()[0].clone()    // 暂时
+            network_name: default_name    // 暂时
         }
     }
     
@@ -226,18 +276,28 @@ impl NetworkInfo {
         // 获取最新的网络数据
         let networks = Networks::new_with_refreshed_list();
 
-        let (_, network_data) = networks
+
+        let (_, network_data) = match networks
             .iter()
-            .find(|(name, _)| *name == interface_name)?;
+            .find(|(name, _)| *name == interface_name) {
+            
+            Some(data) => data,
+            None => {
+                // 尝试使用第一个网卡
+                if let Some(first) = networks.iter().next() {
+                    first
+                } else {
+                    return None;
+                }
+            }
+        };
+
+        let curr_rx = network_data.total_received();
+        let curr_tx = network_data.total_transmitted();
         
-        let curr_rx = network_data.total_received(); // 累计下载
-        let curr_tx = network_data.total_transmitted(); // 累计上传
-        
-        // 计算与上次记录的差值
         let speed_down = curr_rx.saturating_sub(self.prev_rx);
         let speed_up = curr_tx.saturating_sub(self.prev_tx);
         
-        // 跟新记录值
         self.prev_rx = curr_rx;
         self.prev_tx = curr_tx;
         
@@ -264,3 +324,5 @@ fn network_interface_name() -> Vec<String> {
     }
     res
 }
+
+
