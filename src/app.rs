@@ -1,4 +1,4 @@
-use crossterm::{event::{KeyCode, KeyEvent}};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 // use std::os::windows::process;
 use ratatui::{
      widgets::{  ScrollbarState, TableState}
@@ -21,10 +21,9 @@ pub enum InputMode {
     Find,
     Command
 }
-
+// TODO： 记得重构 APP
 
 pub struct App {
-    // pub processes: Vec<Row<'static>>,
     pub last_update: Instant,
     pub update_interval: Duration,
     
@@ -41,14 +40,9 @@ pub struct App {
     // 运行状态
     pub is_running: bool,
     pub input_mode: InputMode,
-
     pub time_cyclic: u64,
-
-    // Command Paser
-    // comma
-    // find
     
-    find_pattern: String,
+    // find_pattern: String,
     find_results: Vec<usize>,
     current_find_index: usize
 }
@@ -75,7 +69,7 @@ impl App {
             time_cyclic: 0,
 
             // find
-            find_pattern: String::default(),
+            // find_pattern: String::default(),
             find_results: Vec::default(),
             current_find_index: 0,
             
@@ -138,7 +132,6 @@ impl App {
             // 跟新滚动条总长度
             let total_rows = sysinfo.proc_info.procs.len();
             self.scrollbar_state = self.scrollbar_state.content_length(total_rows);
-            // self.scrollbar_state = self.scrollbar_state.content_length(self.processes.len());
             
             if let Some(selected) = self.table_state.selected() {
                 if selected >= total_rows && total_rows > 0 {
@@ -211,6 +204,16 @@ impl App {
                 return ;
 
             }
+
+            KeyCode::Char('n') => {
+                self.next_find_result();
+                return ;
+            }
+            KeyCode::Char('N') => {
+                self.prev_find_result();
+                return ;
+            }
+
             _ => {}
         }
     }
@@ -315,7 +318,7 @@ impl CommandParser {
             queue: q,
         }
     }
-
+    
     // exit 退出
     // 删除
     // kill -n name
