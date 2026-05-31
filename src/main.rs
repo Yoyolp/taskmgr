@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
 
     // 主循环
     loop {
-        if !app.is_running {
+        if !app.core.is_running() {
             break;
         }
 

@@ -175,34 +175,39 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
             .collect::<Vec<Row>>();
     
     let total_rows = proc_table.len();
-
-    // 渲染表格 
-    // let table = Table::new(app.processes.clone(), widths)
-    let table = Table::new(proc_table, widths)
-        .header(header)
-        .block(Block::bordered()
-            .title(std::format!("Process - >> [{:}]", &sysinfo.selected_pid))
-        )
-        .row_highlight_style(Style::default()
-            .bg(Color::Yellow)
-            .fg(Color::Black)
-            .bold()
-        )
-        .highlight_symbol(">> ");
         
-    frame.render_stateful_widget(table, horizontal_chunks[0], &mut app.table_state);
-    
-    // 创建滚动条状态
-    if let Some(selected) = app.table_state.selected() {
-        app.scrollbar_state = app.scrollbar_state
-            .content_length(total_rows)
-            .position(selected);
-    
-    } else if total_rows > 0 {
-        app.table_state.select(Some(0));
-        app.scrollbar_state = app.scrollbar_state
-            .content_length(total_rows)
-            .position(0);
+    {
+        // 创建滚动条状态
+        let mut scroll_mamager = app.scroll_manager.borrow_mut();
+        if let Some(selected) = scroll_mamager.table_state.selected() {
+            scroll_mamager.scrollbar_state = scroll_mamager
+                .scrollbar_state
+                .content_length(total_rows)
+                .position(selected);
+        }
+        else if total_rows > 0 {
+            scroll_mamager.table_state.select(Some(0));
+            scroll_mamager.scrollbar_state = scroll_mamager
+                .scrollbar_state
+                .content_length(total_rows)
+                .position(0);
+        }
+
+            // 渲染表格 
+        // let table = Table::new(app.processes.clone(), widths)
+        let table = Table::new(proc_table, widths)
+            .header(header)
+            .block(Block::bordered()
+                .title(std::format!("Process - >> [{:}]", &sysinfo.selected_pid))
+            )
+            .row_highlight_style(Style::default()
+                .bg(Color::Yellow)
+                .fg(Color::Black)
+                .bold()
+            )
+            .highlight_symbol(">> ");
+            
+        frame.render_stateful_widget(table, horizontal_chunks[0], &mut scroll_mamager.table_state)
     }
 
     let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
@@ -214,11 +219,11 @@ fn proc_list_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, s
     frame.render_stateful_widget(
         scrollbar,
         horizontal_chunks[1],
-        &mut app.scrollbar_state,
+        &mut app.scroll_manager.borrow_mut().scrollbar_state.clone(),
     );
     
     // 状态栏
-    if let Some(selected_index) = app.table_state.selected() {
+    if let Some(selected_index) = app.scroll_manager.borrow().table_state.selected() {
         let target_proc = &sysinfo.proc_info.procs[selected_index];
         sysinfo.selected_pid = target_proc.pid;
     }
@@ -248,11 +253,11 @@ fn user_input_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, 
     
     let cursor_char = if (app.time_cyclic >> 2) & 1 == 0  {  '|' } else { ' ' };
 
-    match app.input_mode {
+    match app.usr_input_manager.input_mode {
         InputMode::Find => {
             status = Paragraph::new(std::format!(
                 "input > {}{}",
-                app.user_input.value(),
+                app.usr_input_manager.user_input.value(),
                 cursor_char
             ))
             .block(Block::default().borders(Borders::TOP));
@@ -261,7 +266,7 @@ fn user_input_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, 
         InputMode::Command => {
             status = Paragraph::new(std::format!(
                 "command : {}{}",
-                app.user_input.value(),
+                app.usr_input_manager.user_input.value(),
                 cursor_char
             ))
             .block(Block::default().borders(Borders::TOP));
@@ -279,6 +284,3 @@ fn user_input_render(chunks: &mut Rc<[Rect]>, frame: &mut Frame, app: &mut App, 
     
     frame.render_widget(status, chunks[2]); 
 }
-
-
-
